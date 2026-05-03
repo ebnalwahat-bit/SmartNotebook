@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📘 Smart Notebook Pro</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#22c55e">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Arial, sans-serif; transition:0.2s; }
+body { background:#f1f5f9; padding:20px; color:#111827; }
+.container { max-width:1200px; margin:auto; background:white; padding:20px; border-radius:25px; box-shadow:0 5px 20px rgba(0,0,0,0.08); min-height:90vh; }
+.topbar { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+h1 { color:#22c55e; }
+.controls { display:flex; gap:10px; flex-wrap:wrap; }
+button, .btn { padding:10px 16px; border:none; border-radius:12px; background:#22c55e; color:white; cursor:pointer; font-weight:bold; }
+button:hover { opacity:0.85; transform:scale(0.98); }
+.btn-secondary { background:#3b82f6; }
+.btn-danger { background:#ef4444; }
+.btn-other { background:#8b5cf6; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:15px; }
+.card { background:#f8fafc; padding:18px; border-radius:18px; text-align:center; cursor:pointer; font-weight:bold; border:1px solid #dbe3ec; }
+.card:hover { background:#22c55e; color:white; transform:translateY(-3px); }
+.input-box { display:flex; flex-direction:column; gap:12px; margin-bottom:20px; }
+input, select, textarea { padding:12px; border-radius:14px; border:1px solid #dbe3ec; font-size:15px; background:white; }
+.task { background:#f8fafc; padding:15px; border-radius:18px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border:1px solid #dbe3ec; }
+.task-info { display:flex; flex-direction:column; gap:5px; flex:1; }
+.task-title { font-weight:bold; }
+.completed { text-decoration:line-through; opacity:0.6; }
+.task-type { font-size:13px; color:#15803d; font-weight:bold; }
+.task-time { font-size:13px; color:#64748b; }
+.delete-btn { background:#ef4444; padding:8px 12px; }
+.dark { background:#0f172a; color:white; }
+.dark .container { background:#1e293b; }
+.dark .card, .dark .task, .dark input, .dark select { background:#334155; color:white; border-color:#475569; }
+.dark .task-type { color:#86efac; }
+.dark .task-time { color:#94a3b8; }
+.dashboard { display:flex; gap:15px; flex-wrap:wrap; margin-bottom:20px; background:#e2e8f0; padding:15px; border-radius:20px; }
+.stat-card { background:white; padding:15px; border-radius:16px; flex:1; text-align:center; min-width:100px; box-shadow:0 2px 5px rgba(0,0,0,0.05); }
+.dark .stat-card { background:#0f172a; }
+.stat-number { font-size:28px; font-weight:bold; color:#22c55e; }
+.search-bar { display:flex; gap:10px; margin-bottom:20px; }
+.search-bar input { flex:1; }
+.modal { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal-content { background:white; padding:25px; border-radius:25px; width:90%; max-width:400px; }
+.dark .modal-content { background:#1e293b; }
+.modal-content input, .modal-content select { width:100%; margin-bottom:12px; }
+footer { text-align:center; margin-top:20px; color:#64748b; font-size:14px; }
+@media (max-width:600px) { .task { flex-direction:column; align-items:stretch; } }
+</style>
+</head>
+<body>
+<div class="container">
+    <div class="topbar">
+        <h1 id="appTitle">📘 Smart Notebook Pro</h1>
+        <div class="controls">
+            <button id="darkModeBtn">🌙</button>
+            <select id="languageSelect">
+                <option value="ar">🇸🇦 العربية</option>
+                <option value="en">🇬🇧 English</option>
+                <option value="fr">🇫🇷 Français</option>
+                <option value="ru">🇷🇺 Русский</option>
+                <option value="es">🇪🇸 Español</option>
+                <option value="zh">🇨🇳 中文</option>
+                <option value="fa">🇮🇷 فارسی</option>
+            </select>
+            <button id="dashboardBtn">📊</button>
+            <button id="exportBtn">📤</button>
+            <button id="importBtn">📥</button>
+            <button id="clearAllBtn" class="btn-danger">🗑️</button>
+        </div>
+    </div>
+    <div class="search-bar" id="searchBar" style="display: none;">
+        <input type="text" id="searchInput" placeholder="بحث...">
+        <button id="searchCloseBtn">✖</button>
+    </div>
+    <div id="app"></div>
+    <footer>Smart Notebook Pro 2026</footer>
+</div>
+
+<script>
+// ====================== الترجمات (مع الفارسية) ======================
+const translations = {
+    ar: {
+        title: "📘 Smart Notebook Pro",
+        back: "⬅ رجوع",
+        addTask: "➕ إضافة المهمة",
+        taskName: "اسم المهمة",
+        category: "التصنيف",
+        dateTime: "التاريخ والوقت",
+        repeat: "التكرار",
+        repeatNone: "لا تكرار",
+        repeatDaily: "يومي",
+        repeatWeekly: "أسبوعي",
+        repeatMonthly: "شهري",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 بحث",
+        close: "✖ إغلاق",
+        stats: "📊 إحصائيات",
+        totalTasks: "إجمالي المهام",
+        completed: "مكتملة",
+        pending: "معلقة",
+        mostUsedCategory: "أكثر تصنيف استخداماً",
+        exportSuccess: "تم تصدير البيانات",
+        importSuccess: "تم استيراد البيانات بنجاح",
+        confirmClear: "هل أنت متأكد من حذف جميع المهام؟ لا يمكن التراجع.",
+        notificationTitle: "تذكير بمهمة",
+        categories: ["📚 تعليم", "🛒 تسوق", "🏥 صحة", "📅 موعد", "💼 عمل", "🏃 رياضة"],
+        other: "أخرى",
+        enterCategoryName: "أدخل اسم التصنيف الجديد",
+        addTaskFor: "إضافة مهمة جديدة في تصنيف: ",
+        add: "إضافة",
+        cancel: "إلغاء",
+        categoryRequired: "الرجاء إدخال اسم التصنيف"
+    },
+    en: {
+        title: "📘 Smart Notebook Pro",
+        back: "⬅ Back",
+        addTask: "➕ Add Task",
+        taskName: "Task Name",
+        category: "Category",
+        dateTime: "Date & Time",
+        repeat: "Repeat",
+        repeatNone: "No repeat",
+        repeatDaily: "Daily",
+        repeatWeekly: "Weekly",
+        repeatMonthly: "Monthly",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 Search",
+        close: "✖ Close",
+        stats: "📊 Stats",
+        totalTasks: "Total Tasks",
+        completed: "Completed",
+        pending: "Pending",
+        mostUsedCategory: "Most Used Category",
+        exportSuccess: "Data exported",
+        importSuccess: "Data imported successfully",
+        confirmClear: "Are you sure you want to delete all tasks? This cannot be undone.",
+        notificationTitle: "Task Reminder",
+        categories: ["📚 Study", "🛒 Shopping", "🏥 Health", "📅 Appointment", "💼 Work", "🏃 Sports"],
+        other: "Other",
+        enterCategoryName: "Enter new category name",
+        addTaskFor: "Add new task in category: ",
+        add: "Add",
+        cancel: "Cancel",
+        categoryRequired: "Please enter category name"
+    },
+    fr: {
+        title: "📘 Smart Notebook Pro",
+        back: "⬅ Retour",
+        addTask: "➕ Ajouter une tâche",
+        taskName: "Nom de la tâche",
+        category: "Catégorie",
+        dateTime: "Date et heure",
+        repeat: "Répétition",
+        repeatNone: "Aucune",
+        repeatDaily: "Quotidien",
+        repeatWeekly: "Hebdomadaire",
+        repeatMonthly: "Mensuel",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 Rechercher",
+        close: "✖ Fermer",
+        stats: "📊 Statistiques",
+        totalTasks: "Total des tâches",
+        completed: "Terminées",
+        pending: "En attente",
+        mostUsedCategory: "Catégorie la plus utilisée",
+        exportSuccess: "Données exportées",
+        importSuccess: "Données importées avec succès",
+        confirmClear: "Voulez-vous vraiment supprimer toutes les tâches ? Irréversible.",
+        notificationTitle: "Rappel de tâche",
+        categories: ["📚 Étude", "🛒 Courses", "🏥 Santé", "📅 Rendez-vous", "💼 Travail", "🏃 Sport"],
+        other: "Autre",
+        enterCategoryName: "Entrez un nouveau nom de catégorie",
+        addTaskFor: "Ajouter une tâche dans la catégorie : ",
+        add: "Ajouter",
+        cancel: "Annuler",
+        categoryRequired: "Veuillez entrer un nom de catégorie"
+    },
+    ru: {
+        title: "📘 Smart Notebook Pro",
+        back: "⬅ Назад",
+        addTask: "➕ Добавить задачу",
+        taskName: "Название задачи",
+        category: "Категория",
+        dateTime: "Дата и время",
+        repeat: "Повтор",
+        repeatNone: "Нет",
+        repeatDaily: "Ежедневно",
+        repeatWeekly: "Еженедельно",
+        repeatMonthly: "Ежемесячно",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 Поиск",
+        close: "✖ Закрыть",
+        stats: "📊 Статистика",
+        totalTasks: "Всего задач",
+        completed: "Выполнено",
+        pending: "Ожидает",
+        mostUsedCategory: "Часто используемая категория",
+        exportSuccess: "Данные экспортированы",
+        importSuccess: "Данные успешно импортированы",
+        confirmClear: "Вы уверены, что хотите удалить все задачи? Это необратимо.",
+        notificationTitle: "Напоминание о задаче",
+        categories: ["📚 Учёба", "🛒 Покупки", "🏥 Здоровье", "📅 Встреча", "💼 Работа", "🏃 Спорт"],
+        other: "Другое",
+        enterCategoryName: "Введите новое имя категории",
+        addTaskFor: "Добавить задачу в категорию: ",
+        add: "Добавить",
+        cancel: "Отмена",
+        categoryRequired: "Пожалуйста, введите название категории"
+    },
+    es: {
+        title: "📘 Smart Notebook Pro",
+        back: "⬅ Volver",
+        addTask: "➕ Agregar tarea",
+        taskName: "Nombre de la tarea",
+        category: "Categoría",
+        dateTime: "Fecha y hora",
+        repeat: "Repetir",
+        repeatNone: "Sin repetición",
+        repeatDaily: "Diario",
+        repeatWeekly: "Semanal",
+        repeatMonthly: "Mensual",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 Buscar",
+        close: "✖ Cerrar",
+        stats: "📊 Estadísticas",
+        totalTasks: "Total de tareas",
+        completed: "Completadas",
+        pending: "Pendientes",
+        mostUsedCategory: "Categoría más usada",
+        exportSuccess: "Datos exportados",
+        importSuccess: "Datos importados correctamente",
+        confirmClear: "¿Estás seguro de eliminar todas las tareas? No se puede deshacer.",
+        notificationTitle: "Recordatorio de tarea",
+        categories: ["📚 Estudio", "🛒 Compras", "🏥 Salud", "📅 Cita", "💼 Trabajo", "🏃 Deporte"],
+        other: "Otro",
+        enterCategoryName: "Ingrese nuevo nombre de categoría",
+        addTaskFor: "Agregar nueva tarea en categoría: ",
+        add: "Agregar",
+        cancel: "Cancelar",
+        categoryRequired: "Por favor ingrese el nombre de la categoría"
+    },
+    zh: {
+        title: "📘 智能笔记本专业版",
+        back: "⬅ 返回",
+        addTask: "➕ 添加任务",
+        taskName: "任务名称",
+        category: "分类",
+        dateTime: "日期和时间",
+        repeat: "重复",
+        repeatNone: "不重复",
+        repeatDaily: "每天",
+        repeatWeekly: "每周",
+        repeatMonthly: "每月",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 搜索",
+        close: "✖ 关闭",
+        stats: "📊 统计",
+        totalTasks: "总任务数",
+        completed: "已完成",
+        pending: "待办",
+        mostUsedCategory: "最常用分类",
+        exportSuccess: "数据已导出",
+        importSuccess: "数据导入成功",
+        confirmClear: "确定要删除所有任务吗？此操作不可撤销。",
+        notificationTitle: "任务提醒",
+        categories: ["📚 学习", "🛒 购物", "🏥 健康", "📅 约会", "💼 工作", "🏃 运动"],
+        other: "其他",
+        enterCategoryName: "输入新分类名称",
+        addTaskFor: "在分类中添加新任务: ",
+        add: "添加",
+        cancel: "取消",
+        categoryRequired: "请输入分类名称"
+    },
+    fa: {
+        title: "📘 دفترچه هوشمند حرفه‌ای",
+        back: "⬅ بازگشت",
+        addTask: "➕ افزودن وظیفه",
+        taskName: "نام وظیفه",
+        category: "دسته‌بندی",
+        dateTime: "تاریخ و زمان",
+        repeat: "تکرار",
+        repeatNone: "بدون تکرار",
+        repeatDaily: "روزانه",
+        repeatWeekly: "هفتگی",
+        repeatMonthly: "ماهانه",
+        done: "✔",
+        undo: "✅",
+        delete: "🗑",
+        search: "🔍 جستجو",
+        close: "✖ بستن",
+        stats: "📊 آمار",
+        totalTasks: "کل وظایف",
+        completed: "انجام شده",
+        pending: "در انتظار",
+        mostUsedCategory: "پراستفاده‌ترین دسته",
+        exportSuccess: "داده‌ها صادر شد",
+        importSuccess: "داده‌ها با موفقیت وارد شد",
+        confirmClear: "آیا مطمئن هستید که می‌خواهید همه وظایف را حذف کنید؟ این عمل قابل بازگشت نیست.",
+        notificationTitle: "یادآوری وظیفه",
+        categories: ["📚 آموزش", "🛒 خرید", "🏥 سلامتی", "📅 قرار", "💼 کار", "🏃 ورزش"],
+        other: "سایر",
+        enterCategoryName: "نام دسته جدید را وارد کنید",
+        addTaskFor: "افزودن وظیفه جدید در دسته: ",
+        add: "افزودن",
+        cancel: "لغو",
+        categoryRequired: "لطفاً نام دسته را وارد کنید"
+    }
+};
+
+let lang = localStorage.getItem("lang") || "ar";
+let dark = localStorage.getItem("darkMode") === "true";
+if (dark) document.body.classList.add("dark");
+
+let currentMonth = null;
+let currentDay = null;
+let tasks = JSON.parse(localStorage.getItem("tasks") || "{}");
+let searchMode = false;
+let searchQuery = "";
+let notificationInterval = null;
+
+function t(key) { return translations[lang][key] || translations.ar[key] || key; }
+
+function updateStaticTexts() {
+    document.getElementById("appTitle").innerHTML = t("title");
+    const darkBtn = document.getElementById("darkModeBtn");
+    darkBtn.innerHTML = dark ? "☀️" : "🌙";
+    document.getElementById("dashboardBtn").innerHTML = t("stats");
+    document.getElementById("exportBtn").innerHTML = "📤";
+    document.getElementById("importBtn").innerHTML = "📥";
+    document.getElementById("clearAllBtn").innerHTML = "🗑️";
+    document.getElementById("searchBar").style.display = searchMode ? "flex" : "none";
+    if (searchMode) {
+        document.getElementById("searchInput").placeholder = t("search");
+        document.getElementById("searchCloseBtn").innerHTML = t("close");
+    }
+}
+
+function setLanguage(lng) {
+    lang = lng;
+    localStorage.setItem("lang", lang);
+    document.getElementById("languageSelect").value = lang;
+    updateStaticTexts();
+    if (currentMonth !== null && currentDay !== null) renderTasks();
+    else if (currentMonth !== null) openDays(currentMonth);
+    else renderMonths();
+}
+
+function toggleTheme() {
+    dark = !dark;
+    document.body.classList.toggle("dark");
+    localStorage.setItem("darkMode", dark);
+    updateStaticTexts();
+}
+
+function saveTasks() { localStorage.setItem("tasks", JSON.stringify(tasks)); }
+
+function showDashboard() {
+    let total = 0, completed = 0;
+    let typeCount = {};
+    for (let key in tasks) {
+        tasks[key].forEach(t => {
+            total++;
+            if (t.done) completed++;
+            typeCount[t.type] = (typeCount[t.type] || 0) + 1;
+        });
+    }
+    let mostType = Object.keys(typeCount).reduce((a,b) => typeCount[a] > typeCount[b] ? a : b, "None");
+    let html = `<button onclick="renderMonths()">${t("back")}</button><br><br>
+    <div class="dashboard">
+        <div class="stat-card"><div class="stat-number">${total}</div><div>${t("totalTasks")}</div></div>
+        <div class="stat-card"><div class="stat-number">${completed}</div><div>${t("completed")}</div></div>
+        <div class="stat-card"><div class="stat-number">${total - completed}</div><div>${t("pending")}</div></div>
+        <div class="stat-card"><div class="stat-number">${mostType !== "None" ? mostType : "-"}</div><div>${t("mostUsedCategory")}</div></div>
+    </div>`;
+    document.getElementById("app").innerHTML = html;
+}
+
+function exportData() {
+    let dataStr = JSON.stringify(tasks, null, 2);
+    let blob = new Blob([dataStr], {type: "application/json"});
+    let url = URL.createObjectURL(blob);
+    let a = document.createElement("a");
+    a.href = url;
+    a.download = "smart_notebook_backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    alert(t("exportSuccess"));
+}
+
+function importData() {
+    let input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json";
+    input.onchange = e => {
+        let file = e.target.files[0];
+        let reader = new FileReader();
+        reader.onload = ev => {
+            try {
+                let imported = JSON.parse(ev.target.result);
+                tasks = imported;
+                saveTasks();
+                alert(t("importSuccess"));
+                if (currentMonth !== null && currentDay !== null) renderTasks();
+                else if (currentMonth !== null) openDays(currentMonth);
+                else renderMonths();
+            } catch(err) { alert("Invalid file"); }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function clearAllTasks() {
+    if (confirm(t("confirmClear"))) {
+        tasks = {};
+        saveTasks();
+        if (currentMonth !== null && currentDay !== null) renderTasks();
+        else if (currentMonth !== null) openDays(currentMonth);
+        else renderMonths();
+    }
+}
+
+function toggleSearch() {
+    searchMode = !searchMode;
+    document.getElementById("searchBar").style.display = searchMode ? "flex" : "none";
+    if (!searchMode) {
+        searchQuery = "";
+        if (currentMonth !== null && currentDay !== null) renderTasks();
+        else if (currentMonth !== null) openDays(currentMonth);
+        else renderMonths();
+    }
+}
+function performSearch() {
+    searchQuery = document.getElementById("searchInput").value.toLowerCase();
+    if (currentMonth !== null && currentDay !== null) renderTasks();
+    else if (currentMonth !== null) openDays(currentMonth);
+    else renderMonths();
+}
+
+function renderMonths() {
+    currentMonth = null;
+    currentDay = null;
+    let months;
+    if (lang === "ar") months = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
+    else if (lang === "fr") months = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+    else if (lang === "ru") months = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+    else if (lang === "es") months = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    else if (lang === "zh") months = ["一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+    else if (lang === "fa") months = ["ژانویه","فوریه","مارس","آوریل","مه","ژوئن","ژوئیه","اوت","سپتامبر","اکتبر","نوامبر","دسامبر"];
+    else months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+    let html = '<div class="grid">';
+    months.forEach((m,i) => { html += `<div class="card" onclick="openDays(${i})">${m}</div>`; });
+    html += '</div>';
+    document.getElementById("app").innerHTML = html;
+}
+
+function openDays(month) {
+    currentMonth = month;
+    let html = `<button onclick="renderMonths()">${t("back")}</button><br><br><div class="grid">`;
+    for (let i=1; i<=31; i++) html += `<div class="card" onclick="openTasks(${i})">${i}</div>`;
+    html += '</div>';
+    document.getElementById("app").innerHTML = html;
+}
+
+function openTasks(day) {
+    currentDay = day;
+    const key = `${currentMonth}_${currentDay}`;
+    if (!tasks[key]) tasks[key] = [];
+    renderTasks();
+}
+
+// عرض التصنيفات + زر "أخرى"
+function renderTasks() {
+    const key = `${currentMonth}_${currentDay}`;
+    let list = tasks[key] || [];
+    if (searchMode && searchQuery) {
+        list = list.filter(t => t.text.toLowerCase().includes(searchQuery) || t.type.toLowerCase().includes(searchQuery));
+    }
+    let html = `<button onclick="openDays(${currentMonth})">${t("back")}</button><br><br>`;
+    html += `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;">`;
+    // الأزرار الثابتة
+    t("categories").forEach(cat => {
+        html += `<button class="btn-secondary" onclick="showAddTaskModal('${cat.replace(/'/g, "\\'")}')">➕ ${cat}</button>`;
+    });
+    // زر "أخرى"
+    html += `<button class="btn-other" onclick="showCustomCategoryPrompt()">➕ ${t("other")}</button>`;
+    html += `</div>`;
+    // قائمة المهام
+    if (list.length === 0) html += `<p style="color:gray; text-align:center;">لا توجد مهام لهذا اليوم</p>`;
+    list.forEach((tItem, idx) => {
+        html += `<div class="task">
+            <div class="task-info">
+                <div class="task-title ${tItem.done ? 'completed' : ''}">${tItem.text}</div>
+                <div class="task-type">${tItem.type}</div>
+                <div class="task-time">⏰ ${tItem.time || ''} ${tItem.repeat !== 'none' ? `🔄 ${tItem.repeat}` : ''}</div>
+            </div>
+            <div>
+                <button onclick="toggleDone(${idx})">${tItem.done ? t("undo") : t("done")}</button>
+                <button class="delete-btn" onclick="deleteTask(${idx})">${t("delete")}</button>
+            </div>
+        </div>`;
+    });
+    document.getElementById("app").innerHTML = html;
+}
+
+// نافذة لإدخال اسم التصنيف المخصص (أخرى)
+function showCustomCategoryPrompt() {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.innerHTML = `
+        <div class="modal-content">
+            <h3>${t("other")}</h3>
+            <input type="text" id="customCategoryName" placeholder="${t("enterCategoryName")}" autocomplete="off">
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button id="customCategoryConfirm">${t("add")}</button>
+                <button id="customCategoryCancel" class="btn-danger">${t("cancel")}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+    const confirmBtn = modalDiv.querySelector('#customCategoryConfirm');
+    const cancelBtn = modalDiv.querySelector('#customCategoryCancel');
+    confirmBtn.onclick = () => {
+        const catName = modalDiv.querySelector('#customCategoryName').value.trim();
+        if (!catName) return alert(t("categoryRequired"));
+        modalDiv.remove();
+        showAddTaskModal(catName);
+    };
+    cancelBtn.onclick = () => modalDiv.remove();
+    modalDiv.onclick = (e) => { if(e.target === modalDiv) modalDiv.remove(); };
+}
+
+// مودال إضافة المهمة (لأي تصنيف: ثابت أو مخصص)
+function showAddTaskModal(category) {
+    const modalDiv = document.createElement('div');
+    modalDiv.className = 'modal';
+    modalDiv.innerHTML = `
+        <div class="modal-content">
+            <h3>${t("addTaskFor")} ${category}</h3>
+            <input type="text" id="modalTaskName" placeholder="${t("taskName")}" autocomplete="off">
+            <input type="datetime-local" id="modalTaskTime">
+            <select id="modalRepeatSelect">
+                <option value="none">${t("repeatNone")}</option>
+                <option value="daily">${t("repeatDaily")}</option>
+                <option value="weekly">${t("repeatWeekly")}</option>
+                <option value="monthly">${t("repeatMonthly")}</option>
+            </select>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button id="modalConfirmBtn">${t("add")}</button>
+                <button id="modalCancelBtn" class="btn-danger">${t("cancel")}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modalDiv);
+    const confirmBtn = modalDiv.querySelector('#modalConfirmBtn');
+    const cancelBtn = modalDiv.querySelector('#modalCancelBtn');
+    confirmBtn.onclick = () => {
+        const taskName = modalDiv.querySelector('#modalTaskName').value.trim();
+        if (!taskName) return alert(t("taskName") + " " + t("categoryRequired"));
+        const taskTime = modalDiv.querySelector('#modalTaskTime').value;
+        const repeatVal = modalDiv.querySelector('#modalRepeatSelect').value;
+        addTaskWithCategory(category, taskName, taskTime, repeatVal);
+        modalDiv.remove();
+    };
+    cancelBtn.onclick = () => modalDiv.remove();
+    modalDiv.onclick = (e) => { if(e.target === modalDiv) modalDiv.remove(); };
+}
+
+function addTaskWithCategory(category, text, time, repeat) {
+    const key = `${currentMonth}_${currentDay}`;
+    if (!tasks[key]) tasks[key] = [];
+    let newTask = { text, type: category, time, repeat, done: false };
+    tasks[key].push(newTask);
+    saveTasks();
+    if (repeat !== 'none') createRecurringTasks(currentMonth, currentDay, newTask);
+    renderTasks();
+}
+
+function createRecurringTasks(month, day, taskTemplate) {
+    let currentDate = new Date();
+    currentDate.setMonth(month);
+    currentDate.setDate(day);
+    for (let i = 1; i <= 30; i++) {
+        let nextDate = new Date(currentDate);
+        if (taskTemplate.repeat === 'daily') nextDate.setDate(currentDate.getDate() + i);
+        else if (taskTemplate.repeat === 'weekly') nextDate.setDate(currentDate.getDate() + i*7);
+        else if (taskTemplate.repeat === 'monthly') nextDate.setMonth(currentDate.getMonth() + i);
+        else continue;
+        let nextMonth = nextDate.getMonth();
+        let nextDay = nextDate.getDate();
+        let nextKey = `${nextMonth}_${nextDay}`;
+        if (!tasks[nextKey]) tasks[nextKey] = [];
+        let exists = tasks[nextKey].some(t => t.text === taskTemplate.text && t.time === taskTemplate.time);
+        if (!exists) {
+            tasks[nextKey].push({ ...taskTemplate, done: false });
+        }
+    }
+    saveTasks();
+}
+
+function toggleDone(idx) {
+    const key = `${currentMonth}_${currentDay}`;
+    tasks[key][idx].done = !tasks[key][idx].done;
+    saveTasks();
+    renderTasks();
+}
+function deleteTask(idx) {
+    const key = `${currentMonth}_${currentDay}`;
+    tasks[key].splice(idx,1);
+    saveTasks();
+    renderTasks();
+}
+
+function startNotificationChecker() {
+    if (notificationInterval) clearInterval(notificationInterval);
+    notificationInterval = setInterval(() => {
+        if (!("Notification" in window)) return;
+        if (Notification.permission === "granted") {
+            let now = new Date();
+            let nowStr = now.toISOString().slice(0,16);
+            for (let key in tasks) {
+                tasks[key].forEach(task => {
+                    if (!task.done && task.time && task.time === nowStr) {
+                        new Notification(t("notificationTitle"), { body: task.text, icon: "/icon-192.png" });
+                    }
+                });
+            }
+        } else if (Notification.permission !== "denied") Notification.requestPermission();
+    }, 60000);
+}
+
+function init() {
+    document.getElementById("languageSelect").value = lang;
+    document.getElementById("languageSelect").addEventListener("change", (e) => setLanguage(e.target.value));
+    document.getElementById("darkModeBtn").addEventListener("click", toggleTheme);
+    document.getElementById("dashboardBtn").addEventListener("click", showDashboard);
+    document.getElementById("exportBtn").addEventListener("click", exportData);
+    document.getElementById("importBtn").addEventListener("click", importData);
+    document.getElementById("clearAllBtn").addEventListener("click", clearAllTasks);
+    document.getElementById("searchCloseBtn").addEventListener("click", toggleSearch);
+    document.getElementById("searchInput").addEventListener("input", performSearch);
+    updateStaticTexts();
+    renderMonths();
+    startNotificationChecker();
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
+    if ("Notification" in window && Notification.permission === "default") Notification.requestPermission();
+}
+
+init();
+</script>
+</body>
+</html>
